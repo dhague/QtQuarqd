@@ -4,21 +4,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
-//#include <termios.h>
 #include <unistd.h>
-//#include <netinet/in.h>
-//#include <sys/resource.h>
-//#include <sys/select.h>
-//#include <sys/socket.h>
-//#include <sys/ioctl.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/time.h>
 
 #include "quarqd.h"
 #include "ant.h"
 #include "channel_manager.h"
 #include "configuration.h"
-
+#include "TcpServer.h"
 
 #ifndef max
 #define max(a,b) (((a)>(b))?(a):(b))
@@ -26,7 +21,7 @@
 
 #define MAX_CLIENTS 64
 
-static const unsigned char NetworkKey[8] = { 0xB9, 0xA5, 0x21, 0xFB, 0xBD, 0x72, 0xC3, 0x45 };
+static const unsigned char NetworkKey[8] = {0xB9, 0xA5, 0x21, 0xFB, 0xBD, 0x72, 0xC3, 0x45 };
 
 static const char NAME[] = "Quarqd";
 char * heartRateMsgFormat;
@@ -37,7 +32,7 @@ char * cadenceMsgFormat;
 char * speedMsgFormat;
 
 extern int ant_fd;
-static int server_fd;
+Server server;
 static int quit = 0;
 static int clients[MAX_CLIENTS];
 static int num_clients=0;
@@ -95,38 +90,9 @@ void writeData(char *str) {
 }
 
 void init_tcp(void) {
-	struct sockaddr_in addr;
 
-	server_fd = socket(AF_INET, SOCK_STREAM, 0);
-
-	if(server_fd < 0) {
-	  fprintf(stderr,"Error opening tcp socket\n");
-	  perror(NAME);
-	  exit(server_fd);
-	}
-
-	int option_value = 1;
-	if(setsockopt(server_fd,
-		      SOL_SOCKET,
-		      SO_REUSEADDR,
-		      (char *)&option_value,
-		      sizeof(option_value)) < 0)
-    		perror("setsockopt");
-
-	bzero(&addr, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	addr.sin_port = htons(quarqd_config.quarqd_port);
-
-	fcntl(server_fd, F_SETFL, O_NONBLOCK);
-
-	if(bind(server_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		fprintf(stderr,"Error binding tcp socket\n");
-		perror(NAME);
-		exit(-1);
-	}
-
-	if(listen(server_fd, 5) < 0) {
+    if (!server.listen(QHostAddress::Any, quarqd_config.quarqd_port))
+	{
 		fprintf(stderr,"Error listen to tcp socket\n");
 		perror(NAME);
 		exit(-1);
@@ -187,16 +153,6 @@ void init_tty(char *dev) {
 	setdtr(1);
 }
 
-/*
-  The default sigpipe handler doesn't display an error message
-  ignoring the sigpipe causes our error messages to be displayed.
- */
-static void HandleSigPipe(int sig) {
-  // the man page says the signal handler gets reset after use
-  // so let's re-enable it.
-  fprintf(stderr, "whoa! got a sigpipe!\n");
-  //signal(SIGPIPE, HandleSigPipe);
-}
 
 static void Quit(int signal) {
 	quit = 1;
@@ -451,9 +407,6 @@ int main(void) {
 
         printf("\nquarqd v%d\n\nCopyright (c) 2007-2010, Quarq Technology Inc\nAll rights reserved.\n\n",QUARQD_VERSION);
 
-        signal(SIGPIPE, SIG_IGN);
-	//signal(SIGPIPE, HandleSigPipe);
-
 	init_config();
 
 	init_tty(quarqd_config.ant_tty);
@@ -470,13 +423,8 @@ int main(void) {
 	signal(SIGTERM, Quit);
 	while(!quit) {
 	  int i;
-	  fd_set fdset;
 	  struct timeval tv;
 	  int ret;
-
-	  FD_ZERO(&fdset);
-	  FD_SET(server_fd, &fdset);
-	  FD_SET(ant_fd, &fdset);
 
 	  for (i=0; i<num_clients; i++) {
 	    FD_SET(clients[i], &fdset);

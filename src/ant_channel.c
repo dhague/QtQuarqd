@@ -1,3 +1,6 @@
+#ifndef ANT_CHANNEL_C
+#define ANT_CHANNEL_C
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
@@ -9,7 +12,7 @@
 #include "configuration.h"
 
 
-#ifndef DEBUG    
+#ifndef DEBUG
 #define ant_message_print_debug(message) do { ; } while (0)
 #else
 #include "generated-debug.c"
@@ -60,13 +63,13 @@ const ant_sensor_type_t ant_sensor_types[] = {
     .descriptive_name="Speed + Cadence",
     .suffix='d'
   },
-  { .type=CHANNEL_TYPE_QUARQ, 
-    .period=ANT_QUARQ_PERIOD, 
-    .device_id=ANT_QUARQ_TYPE, 
-    .frequency=ANT_QUARQ_FREQUENCY, 
-    .network=DEFAULT_NETWORK_NUMBER, 
-    .descriptive_name="Quarq Channel", 
-    .suffix='Q' 
+  { .type=CHANNEL_TYPE_QUARQ,
+    .period=ANT_QUARQ_PERIOD,
+    .device_id=ANT_QUARQ_TYPE,
+    .frequency=ANT_QUARQ_FREQUENCY,
+    .network=DEFAULT_NETWORK_NUMBER,
+    .descriptive_name="Quarq Channel",
+    .suffix='Q'
   },
   { .type=CHANNEL_TYPE_FAST_QUARQ,
     .period=ANT_FAST_QUARQ_PERIOD,
@@ -91,7 +94,7 @@ const ant_sensor_type_t ant_sensor_types[] = {
 static float timeout_blanking=2.0;  // time before reporting stale data, seconds
 static float timeout_drop=2.0; // time before reporting dropped message
 static float timeout_scan=10.0; // time to do initial scan
-static float timeout_lost=30.0; // time to do more thorough scan 
+static float timeout_lost=30.0; // time to do more thorough scan
 
 void ant_channel_set_id(ant_channel_t *self) {
   if ((self->channel_type)==CHANNEL_TYPE_UNUSED) {
@@ -102,17 +105,17 @@ void ant_channel_set_id(ant_channel_t *self) {
 }
 
 void ant_channel_init(ant_channel_t *self, int number, channel_manager_t *parent) {
-  
+
   self->parent=parent;
-  
+
   self->channel_type=CHANNEL_TYPE_UNUSED;
   self->channel_type_flags=0;
   self->number=number;
-  
+
 
   self->is_cinqo=0;
   self->is_old_cinqo=0;
-  self->control_channel=NULL;  
+  self->control_channel=NULL;
   self->manufacturer_id=0;
   self->product_id=0;
   self->product_version=0;
@@ -122,7 +125,7 @@ void ant_channel_init(ant_channel_t *self, int number, channel_manager_t *parent
 
   ant_channel_set_id(self);
 
-  ANT_AssignChannelEventFunction(self->number, 
+  ANT_AssignChannelEventFunction(self->number,
 				 (void (*)(void *, unsigned char*)) ant_channel_receive_message,
 				 (void *)self);
 
@@ -132,12 +135,12 @@ void ant_channel_init(ant_channel_t *self, int number, channel_manager_t *parent
   self->messages_received=0;
   self->messages_dropped=0;
 
-  ant_channel_burst_init(self);  
+  ant_channel_burst_init(self);
 
   INITIALIZE_MESSAGES_INITIALIZATION(self->mi);
 }
 
-char * ant_channel_get_description(ant_channel_t *self) {  
+char * ant_channel_get_description(ant_channel_t *self) {
   return ant_sensor_types[self->channel_type].descriptive_name;
 }
 
@@ -145,10 +148,10 @@ int ant_channel_interpret_description(char *description) {
   const ant_sensor_type_t *st=ant_sensor_types;
 
   do {
-    if (0==strcmp(st->descriptive_name,description)) 
+    if (0==strcmp(st->descriptive_name,description))
       return st->type;
   } while (++st, st->type != CHANNEL_TYPE_GUARD);
-  
+
   return -1;
 }
 
@@ -159,28 +162,28 @@ int ant_channel_interpret_suffix(char c) {
     if (st->suffix==c)
       return st->type;
   } while (++st, st->type != CHANNEL_TYPE_GUARD);
-  
+
   return -1;
 }
 
 void ant_channel_open(ant_channel_t *self, int device_number, int channel_type) {
   self->channel_type=channel_type;
-  self->channel_type_flags = CHANNEL_TYPE_QUICK_SEARCH ; 
+  self->channel_type_flags = CHANNEL_TYPE_QUICK_SEARCH ;
   self->device_number=device_number;
 
   ant_channel_set_id(self);
 
   if (self->channel_assigned)
-    ANT_UnassignChannel(self->number);        
-  else 
-    ant_channel_attempt_transition(self,ANT_UNASSIGN_CHANNEL);      
+    ANT_UnassignChannel(self->number);
+  else
+    ant_channel_attempt_transition(self,ANT_UNASSIGN_CHANNEL);
 }
 
 
-void ant_channel_close(ant_channel_t *self) {  
+void ant_channel_close(ant_channel_t *self) {
   ant_channel_lost_info(self);
 
-    ANT_Close(self->number); 
+    ANT_Close(self->number);
 
 }
 
@@ -188,7 +191,7 @@ double timestamp;
 
 static inline double get_timestamp( void ) {
   struct timeval tv;
-  gettimeofday(&tv, NULL); 
+  gettimeofday(&tv, NULL);
   return tv.tv_sec * 1.0 + tv.tv_usec * 1.0e-6;
 }
 
@@ -214,10 +217,10 @@ void ant_channel_receive_message(ant_channel_t *self, unsigned char *ant_message
     ant_channel_channel_event(self, ant_message);
     break;
   case ANT_BROADCAST_DATA:
-    ant_channel_broadcast_event(self, ant_message);   
+    ant_channel_broadcast_event(self, ant_message);
     break;
   case ANT_ACK_DATA:
-    ant_channel_ack_event(self, ant_message);   
+    ant_channel_ack_event(self, ant_message);
     break;
   case ANT_CHANNEL_ID:
     ant_channel_channel_id(self, ant_message);
@@ -229,7 +232,7 @@ void ant_channel_receive_message(ant_channel_t *self, unsigned char *ant_message
     DEBUG_ERRORS("?");
   exit(-9);
 
-  }  
+  }
 
   if (get_timestamp() > self->blanking_timestamp + timeout_blanking) {
     if (!self->blanked) {
@@ -240,7 +243,7 @@ void ant_channel_receive_message(ant_channel_t *self, unsigned char *ant_message
 }
 
 
-void ant_channel_channel_event(ant_channel_t *self, unsigned char *ant_message) { 
+void ant_channel_channel_event(ant_channel_t *self, unsigned char *ant_message) {
   unsigned char *message=ant_message+2;
 
   if (MESSAGE_IS_RESPONSE_NO_ERROR(message)) {
@@ -251,7 +254,7 @@ void ant_channel_channel_event(ant_channel_t *self, unsigned char *ant_message) 
     // timeouts are normal for search channel, so don't send xml for those
     if (self->channel_type_flags & CHANNEL_TYPE_QUICK_SEARCH) {
       DEBUG_ANT_CONNECTION("Got timeout on channel %d.  Turning off search.\n", self->number);
-      self->channel_type_flags &= ~CHANNEL_TYPE_QUICK_SEARCH;		
+      self->channel_type_flags &= ~CHANNEL_TYPE_QUICK_SEARCH;
       self->channel_type_flags |= CHANNEL_TYPE_WAITING;
 
     } else {
@@ -264,14 +267,14 @@ void ant_channel_channel_event(ant_channel_t *self, unsigned char *ant_message) 
       self->device_number=0;
       ant_channel_set_id(self);
 
-      ANT_UnassignChannel(self->number);      
-    } 
+      ANT_UnassignChannel(self->number);
+    }
 
     DEBUG_ANT_CONNECTION("Rx search timeout on %d\n",self->number);
     channel_manager_start_waiting_search(self->parent);
-  
+
   } else if (MESSAGE_IS_EVENT_RX_FAIL(message)) {
-    //ant_message_print_debug(message);        
+    //ant_message_print_debug(message);
 
     self->messages_dropped++;
 
@@ -281,7 +284,7 @@ void ant_channel_channel_event(ant_channel_t *self, unsigned char *ant_message) 
 
     if (t > (self->last_message_timestamp + timeout_drop)) {
       if (self->channel_type != CHANNEL_TYPE_UNUSED)
-	ant_channel_drop_info(self);      
+	ant_channel_drop_info(self);
       // this is a hacky way to prevent the drop message from sending multiple times
       self->last_message_timestamp+=2*timeout_drop;
     }
@@ -293,17 +296,17 @@ void ant_channel_channel_event(ant_channel_t *self, unsigned char *ant_message) 
       self->tx_ack_disposition(self);
     }
   } else {
-      ant_message_print_debug(message);    
+      ant_message_print_debug(message);
     ; // default
   }
 }
 
 void ant_channel_send_cinqo_error(ant_channel_t *self) {
-  XmlPrintf("<CinQoError id='%s' />\n", self->id); 
+  XmlPrintf("<CinQoError id='%s' />\n", self->id);
 }
 
 void ant_channel_send_cinqo_success(ant_channel_t *self) {
-  XmlPrintf("<CinQoConnected id='%s' />\n", self->id); 
+  XmlPrintf("<CinQoConnected id='%s' />\n", self->id);
 }
 
 void ant_channel_check_cinqo(ant_channel_t *self) {
@@ -323,7 +326,7 @@ void ant_channel_check_cinqo(ant_channel_t *self) {
   fprintf(stderr, "Product version %d | %d\n",version_hi, version_lo);
 
   if (!(self->mi.first_time_manufacturer || self->mi.first_time_product)) {
-    if ((self->product_id == 1) && (self->manufacturer_id==7)) { 
+    if ((self->product_id == 1) && (self->manufacturer_id==7)) {
       // we are a cinqo, were we aware of this?
       self->is_cinqo=1;
 
@@ -337,7 +340,7 @@ void ant_channel_check_cinqo(ant_channel_t *self) {
   }
 }
 
-void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message) { 
+void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message) {
 
   unsigned char *message=ant_message+2;
   static char last_message[ANT_MAX_MESSAGE_SIZE];
@@ -352,7 +355,7 @@ void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message
     self->blanking_timestamp=get_timestamp();
     self->blanked=0;
     return; // because we can't associate a channel id with the message yet
-  } 
+  }
 
   if (0==memcmp(message, last_message, ANT_MAX_MESSAGE_SIZE)) {
     //fprintf(stderr, "No change\n");
@@ -363,7 +366,7 @@ void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message
     // for automatically opening quarq channel on early cinqo
     if (MESSAGE_IS_PRODUCT(message)) {
       self->mi.first_time_product=0;
-      self->product_version&=0x00ff; 
+      self->product_version&=0x00ff;
       self->product_version|=(PRODUCT_SW_REV(message))<<8;
       ant_channel_check_cinqo(self);
     } else if (MESSAGE_IS_MANUFACTURER(message)) {
@@ -373,18 +376,18 @@ void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message
       self->manufacturer_id=MANUFACTURER_MANUFACTURER_ID(message);
       self->product_id=MANUFACTURER_MODEL_NUMBER_ID(message);
       ant_channel_check_cinqo(self);
-    }            
+    }
   }
 
   {
     int matched=0;
-    
+
     switch(self->channel_type) {
     case CHANNEL_TYPE_HR:
       ant_message_print_debug(message);
       matched=xml_message_interpret_heartrate_broadcast(self, message);
       break;
-    case CHANNEL_TYPE_POWER:    
+    case CHANNEL_TYPE_POWER:
       matched=xml_message_interpret_power_broadcast(self, message);
       break;
     case CHANNEL_TYPE_SPEED:
@@ -405,10 +408,10 @@ void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message
       matched=xml_message_interpret_power_broadcast(self, message);
 #endif
       break;
-    default:      
+    default:
       break;
     }
-   
+
     if ((!matched) && (quarqd_config.debug_level & DEBUG_LEVEL_ERRORS)) {
       int i;
       fprintf(stderr, "Unknown Message!\n");
@@ -418,23 +421,23 @@ void ant_channel_broadcast_event(ant_channel_t *self, unsigned char *ant_message
       fprintf(stderr, "\n");
 
       ant_message_print_debug(message);
-      
+
       //exit(-1); // for testing
-    } 
+    }
   }
 }
 
-void ant_channel_ack_event(ant_channel_t *self, unsigned char *ant_message) { 
+void ant_channel_ack_event(ant_channel_t *self, unsigned char *ant_message) {
 
   unsigned char *message=ant_message+2;
 
   {
     int matched=0;
-    
+
     switch(self->channel_type) {
-    case CHANNEL_TYPE_POWER:    
+    case CHANNEL_TYPE_POWER:
       matched=xml_message_interpret_power_broadcast(self, message);
-      break;  
+      break;
     }
 
     if ((!matched) && (quarqd_config.debug_level & DEBUG_LEVEL_ERRORS)) {
@@ -446,20 +449,20 @@ void ant_channel_ack_event(ant_channel_t *self, unsigned char *ant_message) {
       fprintf(stderr, "\n");
 
       ant_message_print_debug(message);
-      
+
       exit(-1); // for testing
-    } 
+    }
   }
 }
 
 
-void ant_channel_channel_id(ant_channel_t *self, unsigned char *ant_message) { 
-  
+void ant_channel_channel_id(ant_channel_t *self, unsigned char *ant_message) {
+
   unsigned char *message=ant_message+2;
-  
+
   self->device_number=CHANNEL_ID_DEVICE_NUMBER(message);
   self->device_id=CHANNEL_ID_DEVICE_TYPE_ID(message);
-  
+
   ant_channel_set_id(self);
 
   self->state=MESSAGE_RECEIVED;
@@ -469,21 +472,21 @@ void ant_channel_channel_id(ant_channel_t *self, unsigned char *ant_message) {
 		       ant_channel_get_description(self),
 		       self->device_id,
 		       self->device_number);
-  
+
   ant_channel_channel_info(self);
 
-  // if we were searching, 
+  // if we were searching,
   if (self->channel_type_flags & CHANNEL_TYPE_QUICK_SEARCH) {
-    ANT_SetChannelSearchTimeout(self->number, 
+    ANT_SetChannelSearchTimeout(self->number,
 				(int)(timeout_lost/2.5));
-  }  
+  }
   self->channel_type_flags &= ~CHANNEL_TYPE_QUICK_SEARCH;
 
   channel_manager_start_waiting_search(self->parent);
 
   // if we are quarq channel, hook up with the ant+ channel we are connected to
   channel_manager_associate_control_channels(self->parent);
-  
+
 }
 
 void ant_channel_burst_init(ant_channel_t *self) {
@@ -493,7 +496,7 @@ void ant_channel_burst_init(ant_channel_t *self) {
 }
 
 int ant_channel_is_searching(ant_channel_t *self) {
-  return ((self->channel_type_flags & (CHANNEL_TYPE_WAITING | CHANNEL_TYPE_QUICK_SEARCH)) || (self->state != MESSAGE_RECEIVED)); 
+  return ((self->channel_type_flags & (CHANNEL_TYPE_WAITING | CHANNEL_TYPE_QUICK_SEARCH)) || (self->state != MESSAGE_RECEIVED));
 }
 
 
@@ -505,19 +508,19 @@ void ant_channel_burst_data(ant_channel_t *self, unsigned char *ant_message) {
   const unsigned char next_sequence[4]={1,2,3,1};
 
   if (seq!=self->rx_burst_next_sequence) {
-    DEBUG_ERRORS("Bad sequence %d not %d\n",seq,self->rx_burst_next_sequence); 
+    DEBUG_ERRORS("Bad sequence %d not %d\n",seq,self->rx_burst_next_sequence);
    // burst problem!
   } else {
     int len=ant_message[ANT_OFFSET_LENGTH]-3;
-    
+
     if ((self->rx_burst_data_index + len)>(RX_BURST_DATA_LEN)) {
       len = RX_BURST_DATA_LEN-self->rx_burst_data_index;
     }
 
     self->rx_burst_next_sequence=next_sequence[(int)seq];
     memcpy(self->rx_burst_data+self->rx_burst_data_index, message+2, len);
-    self->rx_burst_data_index+=len; 
-    
+    self->rx_burst_data_index+=len;
+
     //fprintf(stderr, "Copying %d bytes.\n",len);
   }
 
@@ -529,12 +532,12 @@ void ant_channel_burst_data(ant_channel_t *self, unsigned char *ant_message) {
   }
 }
 
-void ant_channel_request_calibrate(ant_channel_t *self) {  
+void ant_channel_request_calibrate(ant_channel_t *self) {
   ANT_RequestCalibrate(self->number);
 }
 
 void ant_channel_attempt_transition(ant_channel_t *self, int message_id) {
-  
+
   const ant_sensor_type_t *st;
 
   int previous_state=self->state;
@@ -551,7 +554,7 @@ void ant_channel_attempt_transition(ant_channel_t *self, int message_id) {
     // next step is unassign and start over
     // but we must wait until event_channel_closed
     // which is its own channel event
-    self->state=MESSAGE_RECEIVED; 
+    self->state=MESSAGE_RECEIVED;
     break;
   case ANT_UNASSIGN_CHANNEL:
     self->channel_assigned=0;
@@ -561,13 +564,13 @@ void ant_channel_attempt_transition(ant_channel_t *self, int message_id) {
     } else {
 
       self->device_id=st->device_id;
-	
+
       if (self->channel_type & CHANNEL_TYPE_PAIR) {
 	self->device_id |= 0x80;
       }
-      
+
       ant_channel_set_id(self);
-    
+
       DEBUG_ANT_CONNECTION("Opening for %s\n",ant_channel_get_description(self));
       ANT_AssignChannel(self->number, 0, st->network); // recieve channel on network 1
     }
@@ -579,23 +582,23 @@ void ant_channel_attempt_transition(ant_channel_t *self, int message_id) {
   case ANT_CHANNEL_ID:
     if (self->channel_type & CHANNEL_TYPE_QUICK_SEARCH) {
       DEBUG_ANT_CONNECTION("search\n");
-      ANT_SetChannelSearchTimeout(self->number, 
+      ANT_SetChannelSearchTimeout(self->number,
 				  (int)(timeout_scan/2.5));
     } else {
       DEBUG_ANT_CONNECTION("nosearch\n");
-      ANT_SetChannelSearchTimeout(self->number, 
+      ANT_SetChannelSearchTimeout(self->number,
 				  (int)(timeout_lost/2.5));
-    }    
+    }
     break;
   case ANT_SEARCH_TIMEOUT:
     if (previous_state==ANT_CHANNEL_ID) {
       // continue down the intialization chain
-      ANT_SetChannelPeriod(self->number, st->period); 
+      ANT_SetChannelPeriod(self->number, st->period);
     } else {
       // we are setting the ant_search timeout after connected
       // we'll just pretend this never happened
       DEBUG_ANT_CONNECTION("resetting ant_search timeout.\n");
-      self->state=previous_state; 
+      self->state=previous_state;
     }
     break;
   case ANT_CHANNEL_PERIOD:
@@ -611,7 +614,7 @@ void ant_channel_attempt_transition(ant_channel_t *self, int message_id) {
     break;
   default:
     DEBUG_ERRORS("unknown channel event 0x%x\n",message_id);
-  }  
+  }
 }
 
 #define BXmlPrintf(format, args...) \
@@ -642,7 +645,7 @@ void ant_channel_channel_info(ant_channel_t *self) {
 	    self->id,
 	    self->device_number,
 	    ant_channel_get_description(self),
-	    ((self->state==MESSAGE_RECEIVED || 
+	    ((self->state==MESSAGE_RECEIVED ||
 	      (ant_sensor_types[self->channel_type]).type==CHANNEL_TYPE_UNUSED)?
 	     "":" (searching)"),
 	    (self->channel_type_flags&CHANNEL_TYPE_PAIR)?" paired":"",
@@ -653,7 +656,7 @@ void ant_channel_channel_info(ant_channel_t *self) {
 	    100*self->messages_dropped/self->messages_received : 0);
 }
 
-void ant_channel_drop_info(ant_channel_t *self) {  
+void ant_channel_drop_info(ant_channel_t *self) {
   XmlPrintf("<SensorDrop id='%s' device_number='%d' type='%s' timeout='%.1f' ant_channel='%d'/>\n",
 	    self->id,
 	    self->device_number,
@@ -663,20 +666,20 @@ void ant_channel_drop_info(ant_channel_t *self) {
 
 }
 
-void ant_channel_lost_info(ant_channel_t *self) {  
+void ant_channel_lost_info(ant_channel_t *self) {
   XmlPrintf("<SensorLost id='%s' device_number='%d' type='%s' timeout='%.1f' ant_channel='%d'/>\n",
 	    self->id,
 	    self->device_number,
-	    ant_channel_get_description(self),	    
+	    ant_channel_get_description(self),
 	    timeout_lost,
 	    self->number);
 }
 
-void ant_channel_stale_info(ant_channel_t *self) {  
+void ant_channel_stale_info(ant_channel_t *self) {
   XmlPrintf("<SensorStale id='%s' device_number='%d' type='%s' timeout='%.1f' ant_channel='%d'/>\n",
 	    self->id,
 	    self->device_number,
-	    ant_channel_get_description(self),	    
+	    ant_channel_get_description(self),
 	    timeout_blanking,
 	    self->number);
 }
@@ -701,15 +704,15 @@ int ant_channel_set_timeout( char *type, float value, int connection) {
   else {
     ant_channel_report_timeouts();
     return 0;
-  } 
+  }
   ant_channel_report_timeouts();
   return 1;
 }
 
-// this is in the wrong place here for the convenience of the 
+// this is in the wrong place here for the convenience of the
 // XmlPrintf macro
 void ant_channel_search_complete( void ) {
-  XmlPrintf("<SearchFinished />\n");  
+  XmlPrintf("<SearchFinished />\n");
 }
 
 float get_srm_offset(int device_id) {
@@ -723,4 +726,5 @@ void set_srm_offset(int device_id, float value) {
 }
 
 #include "generated-xml.c"
-	    
+
+#endif
