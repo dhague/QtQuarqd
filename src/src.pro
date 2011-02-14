@@ -4,7 +4,7 @@
 
 TEMPLATE = app
 TARGET = 
-DEPENDPATH += c:\Coding\QtQuarqd\src
+DEPENDPATH += c:/Coding/QtQuarqd/src
 INCLUDEPATH += .
 
 # Input
