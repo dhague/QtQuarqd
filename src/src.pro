@@ -20,11 +20,13 @@ HEADERS += ant.h \
            svn_version.h \
            generated-debug.c \
            generated-xml.c \
-           TcpServer.h
+           TcpServer.h \
+           AntStick.h
            
 SOURCES += ant.c \
            ant_channel.c \
            channel_manager.c \
            configuration.c \
            TcpServer.cpp \
-           main.c
+           AntStick.cpp \
+           main.cpp

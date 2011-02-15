@@ -14,6 +14,7 @@
 #include "channel_manager.h"
 #include "configuration.h"
 #include "TcpServer.h"
+#include "AntStick.h"
 
 #ifndef max
 #define max(a,b) (((a)>(b))?(a):(b))
@@ -32,21 +33,10 @@ char * cadenceMsgFormat;
 char * speedMsgFormat;
 
 extern int ant_fd;
-Server server;
+TcpServer server;
 static int quit = 0;
 static int clients[MAX_CLIENTS];
 static int num_clients=0;
-
-static int max_fd;
-
-void compute_max_fd(void) {
-  int i;
-
-  max_fd=max(server_fd, ant_fd);
-  for (i=0; i<num_clients; i++) {
-    max_fd=max(clients[i],max_fd);
-  }
-}
 
 void removeClient(int index) {
   int j;
@@ -56,8 +46,6 @@ void removeClient(int index) {
   for (j=index; j<num_clients; j++) {
     clients[j]=clients[j+1];
   }
-
-  compute_max_fd();
 
 }
 
@@ -101,32 +89,22 @@ void init_tcp(void) {
 
 int setdtr (int on)
 {
-  int controlbits = TIOCM_DTR;
-  if(on)
-    return(ioctl(ant_fd, TIOCMBIC, &controlbits));
-  else
-    return(ioctl(ant_fd, TIOCMBIS, &controlbits));
+    // TODO - for USB1, set DTR
+    return true;
+//  int controlbits = TIOCM_DTR;
+//  if(on)
+//    return(ioctl(ant_fd, TIOCMBIC, &controlbits));
+//  else
+//    return(ioctl(ant_fd, TIOCMBIS, &controlbits));
 }
 
 
 
-void init_tty(char *dev) {
-	struct termios tty_conf;
-
-	ant_fd = open(dev, O_RDWR | O_NOCTTY );
-
-	if(ant_fd < 0) {
-		fprintf(stderr,"Error opening %s: are you root?\n", dev);
-		perror(dev);
-		exit(ant_fd);
-	}
-
-	tcgetattr(ant_fd, &tty_conf);
+void init_tty(AntStick ant_stick) {
 
 #define TRY(sp)						\
 	if (quarqd_config.ant_baudrate==sp) {		\
-	  cfsetispeed(&tty_conf, B ## sp);		\
-	  cfsetospeed(&tty_conf, B ## sp);		\
+	  ant_stick.setBaudRate(sp); \
 	}
 	TRY(4800)
 	else TRY(9600)
@@ -139,15 +117,6 @@ void init_tty(char *dev) {
 	  exit(-1);
 	}
 #undef TRY
-
-	cfmakeraw(&tty_conf);
-
-	tty_conf.c_cc[VMIN]=1;
-   	tty_conf.c_cc[VTIME]=0;
-
-	// Set the new options for the port...
-	tcflush(ant_fd, TCIFLUSH);
-	tcsetattr(ant_fd, TCSANOW, &tty_conf);
 
 	setdtr(0);
 	setdtr(1);

@@ -10,9 +10,9 @@
 TcpServer::TcpServer() : QTcpServer() {
 }
 
-void Server::incomingConnection( int descriptor )
+void TcpServer::incomingConnection( int descriptor )
 {
-    ServerThread *thread = new ServerThread(descriptor, this);
+    TcpServerThread *thread = new TcpServerThread(descriptor, this);
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     thread->start();
 }
