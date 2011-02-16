@@ -1,0 +1,21 @@
+QtQuarqd - a native Windows version of Quarqd
+
+This project is based on quarqd (http://opensource.quarq.us/quarqd/) by Mark Rages.
+
+The original source for quarqd is here: http://www.google.com/url?sa=D&q=http://opensource.quarq.us/quarqd/quarqd_dist.tar.gz
+
+Major changes are:
+
+1. A move to Qt for a more portable implementation of TCP sockets.
+2. A move away from using file descriptors to talk to the ANT+ USB stick
+
+This version aims to use the appropriate Windows driver for the Garmin ANT+ USB stick.
+
+This comes in two versions. The older USB1 version uses a SiLabs CP2012 USB-serial chip, and this is addressed using the SiLabs USBXpress driver.
+The newer USB2 version uses direct USB communication, addressed using the open-source libusb driver.
+
+Both of these drivers are supplied as standard with Garmin's ANT Agent software for using the ANT+ USB stick, available from:
+ http://www8.garmin.com/support/download_details.jsp?id=3741
+ 
+ Note that the ANT Agent itself must NOT be running in order for QtQuard to work.
+ 
